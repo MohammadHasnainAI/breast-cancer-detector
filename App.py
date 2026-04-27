@@ -7,7 +7,8 @@ import streamlit as st
 import tensorflow as tf
 import numpy as np
 from PIL import Image
-import matplotlib.pyplot as plt
+import gdown
+import os
 
 # ── Page config ────────────────────────────────────────────────
 st.set_page_config(
@@ -55,10 +56,18 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ── Load Model ─────────────────────────────────────────────────
+# ── Load Model from Google Drive ───────────────────────────────
 @st.cache_resource
 def load_vision_model():
     try:
+        # Check if the model is already downloaded
+        if not os.path.exists('mammogram_model.h5'):
+            # Using your exact Google Drive File ID
+            file_id = '1H5jmZUElQjKjOU1mPThgTsFN8D8wFE1l' 
+            
+            url = f'https://drive.google.com/uc?id={file_id}'
+            gdown.download(url, 'mammogram_model.h5', quiet=False)
+            
         model = tf.keras.models.load_model('mammogram_model.h5')
         return model, True
     except Exception as e:
@@ -71,13 +80,13 @@ st.markdown("""
 <div class="hero-card">
     <h1 style="color:white; font-size:2.4rem; margin:0;">🩻 AI Mammogram Scanner</h1>
     <p style="color:#aaa; font-size:1.1rem; margin-top:8px;">
-        Upload a Breast X-Ray to detect signs of Malignancy using Deep Learning.
+        Upload a Breast X-Ray to detect signs of Malignancy using our DenseNet AI.
     </p>
 </div>
 """, unsafe_allow_html=True)
 
 if not model_loaded:
-    st.error("⚠️ Model not found! Please upload 'mammogram_model.h5' to your GitHub.")
+    st.error("⚠️ Loading Model from Server... Please refresh the page in 10 seconds.")
     st.stop()
 
 # ── Image Uploader ─────────────────────────────────────────────
