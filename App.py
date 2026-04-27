@@ -412,7 +412,7 @@ with tab2:
     ax.tick_params(colors='white', labelsize=8)
     ax.axvline(0, color='white', linewidth=0.5)
     for spine in ax.spines.values():
-        spine.set_edgecolor('rgba(255,255,255,0.1)')
+        spine.set_edgecolor((1.0, 1.0, 1.0, 0.1))
     plt.tight_layout()
     st.pyplot(fig)
     plt.close()
