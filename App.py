@@ -1,17 +1,19 @@
 """
-AI Breast Ultrasound Scanner
-Powered by Hugging Face Vision Transformers | Deployable on Streamlit Cloud
+Brain Tumor MRI Scanner Web App
+Powered by a Custom CNN | Deployable on Streamlit Cloud
 """
 
 import streamlit as st
+import tensorflow as tf
+import numpy as np
 from PIL import Image
-import torch
-from transformers import pipeline
+import gdown
+import os
 
 # ── Page config ────────────────────────────────────────────────
 st.set_page_config(
-    page_title="AI Ultrasound Scanner",
-    page_icon="🩺",
+    page_title="Brain MRI Scanner",
+    page_icon="🧠",
     layout="centered"
 )
 
@@ -29,93 +31,117 @@ st.markdown("""
         border: 1px solid rgba(255,255,255,0.08);
         text-align: center;
     }
-    .result-box {
+    .result-healthy {
+        background: linear-gradient(135deg, #0d2b1d, #133d28);
+        border: 2px solid #2ecc71;
         border-radius: 16px;
         padding: 28px;
         text-align: center;
-        margin-top: 20px;
+    }
+    .result-tumor {
+        background: linear-gradient(135deg, #2b0d0d, #3d1313);
+        border: 2px solid #e74c3c;
+        border-radius: 16px;
+        padding: 28px;
+        text-align: center;
+    }
+    .info-box {
+        background: rgba(52,152,219,0.1);
+        border: 1px solid #3498db;
+        border-radius: 10px;
+        padding: 16px;
+        margin: 12px 0;
+        text-align: center;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Load Hugging Face Model ────────────────────────────────────
+# ── Load Model from Google Drive ───────────────────────────────
 @st.cache_resource
-def load_hf_model():
-    # This automatically downloads a pre-trained, highly accurate medical AI!
-    return pipeline("image-classification", model="Parveshiiii/breast-cancer-detector")
+def load_vision_model():
+    try:
+        # Check if the model is already downloaded
+        if not os.path.exists('brain_tumor_model.h5'):
+            # Using your new Brain Tumor Google Drive File ID
+            file_id = '13qow6nsxNW0SsiQBPe2QPVnpB3NGB7FN' 
+            
+            url = f'https://drive.google.com/uc?id={file_id}'
+            gdown.download(url, 'brain_tumor_model.h5', quiet=False)
+            
+        model = tf.keras.models.load_model('brain_tumor_model.h5')
+        return model, True
+    except Exception as e:
+        return None, False
 
-try:
-    classifier = load_hf_model()
-    model_loaded = True
-except Exception as e:
-    model_loaded = False
+model, model_loaded = load_vision_model()
 
 # ── UI Header ──────────────────────────────────────────────────
 st.markdown("""
 <div class="hero-card">
-    <h1 style="color:white; font-size:2.4rem; margin:0;">🩺 AI Ultrasound Scanner</h1>
+    <h1 style="color:white; font-size:2.4rem; margin:0;">🧠 AI Brain MRI Scanner</h1>
     <p style="color:#aaa; font-size:1.1rem; margin-top:8px;">
-        Upload a Breast Ultrasound to detect Normal, Benign, or Malignant tissue using Vision Transformers.
+        Upload a Brain MRI to detect the presence of a tumor using Deep Learning.
     </p>
 </div>
 """, unsafe_allow_html=True)
 
 if not model_loaded:
-    st.error("⚠️ Booting up AI Engine from Hugging Face... Please wait 30 seconds and refresh.")
+    st.error("⚠️ Loading Model from Server... Please wait a moment and then refresh the page.")
     st.stop()
 
 # ── Image Uploader ─────────────────────────────────────────────
-st.markdown("### 1. Upload Ultrasound Image")
+st.markdown("### 1. Upload MRI Image")
 uploaded_file = st.file_uploader("Choose a JPG or PNG file", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
+    # Display the uploaded image
     image = Image.open(uploaded_file).convert('RGB')
-    st.image(image, caption='Uploaded Ultrasound', use_container_width=True)
+    st.image(image, caption='Uploaded MRI Scan', use_container_width=True)
     
     st.markdown("---")
     
     # ── AI Processing ──────────────────────────────────────────
-    if st.button("🔍 ANALYZE ULTRASOUND", use_container_width=True):
-        with st.spinner("Connecting to Hugging Face Vision Model..."):
+    if st.button("🔍 ANALYZE SCAN", use_container_width=True):
+        with st.spinner("AI is analyzing the brain structures..."):
             
-            # Predict using the Pipeline
-            results = classifier(image)
+            # Format image for our custom CNN (150x150 to match Colab)
+            img_resized = image.resize((150, 150))
+            img_array = np.array(img_resized)
+            img_array = np.expand_dims(img_array, axis=0) # Add batch dimension
             
-            # Extract top prediction
-            top_prediction = results[0]
-            label = top_prediction['label'].upper()
-            confidence = top_prediction['score'] * 100
+            # Predict
+            prob = model.predict(img_array, verbose=0)[0][0]
             
-            # UI Logic based on the result
-            if label == "MALIGNANT":
-                color = "#e74c3c"
-                emoji = "🔴"
-                border = "#e74c3c"
-                bg = "linear-gradient(135deg, #2b0d0d, #3d1313)"
-                msg = "⚠️ Suspicious features detected. Immediate medical consultation recommended."
-            elif label == "BENIGN":
-                color = "#f1c40f"
-                emoji = "🟡"
-                border = "#f1c40f"
-                bg = "linear-gradient(135deg, #2b2410, #3d3115)"
-                msg = "⚕️ Image appears benign (non-cancerous lump). Regular monitoring advised."
-            else: # NORMAL
-                color = "#2ecc71"
-                emoji = "🟢"
-                border = "#2ecc71"
-                bg = "linear-gradient(135deg, #0d2b1d, #133d28)"
-                msg = "✅ Image appears normal. Healthy tissue detected."
-
+            # Logic: closer to 1 is Tumor, closer to 0 is Healthy
+            has_tumor = prob >= 0.5
+            confidence = prob if has_tumor else (1 - prob)
+            
+            # Output variables
+            label = "TUMOR DETECTED" if has_tumor else "HEALTHY (NO TUMOR)"
+            css_class = "result-tumor" if has_tumor else "result-healthy"
+            emoji = "⚠️" if has_tumor else "✅"
+            color = "#e74c3c" if has_tumor else "#2ecc71"
+            
             # ── Display Results ────────────────────────────────
             st.markdown(f"""
-            <div class="result-box" style="background: {bg}; border: 2px solid {border};">
-                <h1 style="color:{color}; font-size:2.5rem; margin:0;">{emoji} {label} DETECTED</h1>
+            <div class="{css_class}">
+                <h1 style="color:{color}; font-size:2.5rem; margin:0;">{emoji} {label}</h1>
                 <p style="color:white; font-size:1.4rem; margin-top:12px;">
-                    AI Confidence Score: <strong>{confidence:.1f}%</strong>
+                    AI Confidence Score: <strong>{confidence*100:.1f}%</strong>
                 </p>
-                <p style="color:#aaa; margin-top:8px;">{msg}</p>
             </div>
             """, unsafe_allow_html=True)
             
+            if has_tumor:
+                st.error("Abnormalities detected. Please consult a neurologist immediately.")
+            else:
+                st.success("No anomalies detected. Brain structure appears healthy.")
+
 # ── Footer ─────────────────────────────────────────────────────
-st.markdown("<br><br><p style='text-align:center; color:#555;'>Powered by Hugging Face Transformers</p>", unsafe_allow_html=True)
+st.markdown("<br>", unsafe_allow_html=True)
+st.markdown("""
+<div class="info-box">
+    ⚠️ <strong>Medical Disclaimer:</strong> This tool is an academic AI project. 
+    It is not FDA-approved and cannot replace a professional radiologist.
+</div>
+""", unsafe_allow_html=True)
