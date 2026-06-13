@@ -1,6 +1,6 @@
 """
 NeuroScan AI - Professional Brain MRI Analysis
-Developed by Mohammad Hasnain | Version 3.0
+Developed by Mohammad Hasnain | Version 4.0
 """
 
 import streamlit as st
@@ -12,7 +12,7 @@ import os
 import time
 import datetime
 
-# ── 1. Page Configuration ──────────────────────────────────────
+# ── 1. Page Config ─────────────────────────────────────────────
 st.set_page_config(
     page_title="NeuroScan AI | Brain MRI",
     page_icon="🧠",
@@ -20,247 +20,152 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# ── 2. Session State ───────────────────────────────────────────
 if 'scan_history' not in st.session_state:
     st.session_state.scan_history = []
+if 'dark_mode' not in st.session_state:
+    st.session_state.dark_mode = False
+if 'analysis_done' not in st.session_state:
+    st.session_state.analysis_done = False
+if 'last_result' not in st.session_state:
+    st.session_state.last_result = None
 
-# ── 2. CSS Styling ─────────────────────────────────────────────
-st.markdown("""
+# ── 3. Theme Colors ────────────────────────────────────────────
+if st.session_state.dark_mode:
+    BG        = "#1a1a2e"
+    BG2       = "#16213e"
+    BG3       = "#0f3460"
+    BORDER    = "#2d3748"
+    TEXT      = "#e2e8f0"
+    TEXT2     = "#94a3b8"
+    ACCENT    = "#4299e1"
+    CARD_BG   = "#1e2a3a"
+    INPUT_BG  = "#1e2a3a"
+    SHADOW    = "rgba(0,0,0,0.3)"
+else:
+    BG        = "#f1f5f9"
+    BG2       = "#ffffff"
+    BG3       = "#e2e8f0"
+    BORDER    = "#cbd5e1"
+    TEXT      = "#1e293b"
+    TEXT2     = "#64748b"
+    ACCENT    = "#2563eb"
+    CARD_BG   = "#ffffff"
+    INPUT_BG  = "#ffffff"
+    SHADOW    = "rgba(0,0,0,0.08)"
+
+# ── 4. CSS ─────────────────────────────────────────────────────
+st.markdown(f"""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-    html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
-    }
+html, body, [class*="css"] {{
+    font-family: 'Inter', sans-serif;
+}}
 
-    /* ── Page Background ── */
-    .stApp {
-        background-color: #0d1117;
-    }
+/* Page background */
+.stApp {{
+    background-color: {BG};
+}}
 
-    /* ── Header ── */
-    .ns-header {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        padding: 28px 0 6px 0;
-        border-bottom: 1px solid #1e2a3a;
-        margin-bottom: 24px;
-    }
-    .ns-logo {
-        font-size: 2.2rem;
-        line-height: 1;
-    }
-    .ns-title {
-        font-size: 1.7rem;
-        font-weight: 700;
-        color: #e2e8f0;
-        letter-spacing: -0.01em;
-        margin: 0;
-    }
-    .ns-subtitle {
-        font-size: 0.82rem;
-        color: #4a7fa5;
-        margin: 2px 0 0 0;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        font-weight: 500;
-    }
+/* Sidebar */
+section[data-testid="stSidebar"] {{
+    background-color: {BG2};
+    border-right: 1px solid {BORDER};
+}}
+section[data-testid="stSidebar"] .stTextInput input,
+section[data-testid="stSidebar"] .stNumberInput input {{
+    background-color: {INPUT_BG};
+    border: 1px solid {BORDER};
+    color: {TEXT};
+    border-radius: 6px;
+}}
 
-    /* ── Disclaimer Banner ── */
-    .ns-disclaimer {
-        background-color: #111827;
-        border: 1px solid #1e3a5f;
-        border-left: 4px solid #3b82f6;
-        border-radius: 6px;
-        padding: 12px 16px;
-        margin-bottom: 22px;
-        color: #94a3b8;
-        font-size: 0.82rem;
-        line-height: 1.6;
-    }
-    .ns-disclaimer strong { color: #60a5fa; }
+/* Labels */
+label[data-testid="stWidgetLabel"] p {{
+    color: {TEXT2};
+    font-size: 0.74rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}}
 
-    /* ── Upload Zone ── */
-    .upload-label {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: #4a7fa5;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        margin-bottom: 8px;
-        display: block;
-    }
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] {{
+    background-color: {BG};
+    border-bottom: 2px solid {BORDER};
+    gap: 4px;
+}}
+.stTabs [data-baseweb="tab"] {{
+    color: {TEXT2};
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 8px 18px;
+    border-radius: 6px 6px 0 0;
+    background: transparent;
+}}
+.stTabs [aria-selected="true"] {{
+    color: {ACCENT} !important;
+    background-color: {BG2} !important;
+    border-bottom: 2px solid {ACCENT};
+}}
 
-    /* ── Section Heading ── */
-    .ns-section-title {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: #4a7fa5;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        margin-bottom: 14px;
-        padding-bottom: 8px;
-        border-bottom: 1px solid #1e2a3a;
-    }
+/* Buttons */
+.stButton > button {{
+    background: {ACCENT};
+    color: white;
+    border: none;
+    border-radius: 7px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.03em;
+    padding: 11px;
+    width: 100%;
+    transition: opacity 0.2s;
+    cursor: pointer;
+}}
+.stButton > button:hover {{
+    opacity: 0.88;
+}}
 
-    /* ── Result Cards ── */
-    .result-positive {
-        background: #160a0a;
-        border: 1px solid #7f1d1d;
-        border-left: 5px solid #ef4444;
-        border-radius: 8px;
-        padding: 20px 22px;
-        margin-bottom: 14px;
-    }
-    .result-positive .r-label { color: #f87171; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 4px; }
-    .result-positive .r-value { color: #ffffff; font-size: 2.4rem; font-weight: 700; line-height: 1; margin-bottom: 2px; }
-    .result-positive .r-sub   { color: #fca5a5; font-size: 0.78rem; margin-top: 4px; }
+.stDownloadButton > button {{
+    background: {BG2};
+    color: {ACCENT};
+    border: 1.5px solid {ACCENT};
+    border-radius: 7px;
+    font-weight: 600;
+    font-size: 0.82rem;
+}}
 
-    .result-negative {
-        background: #030f0a;
-        border: 1px solid #064e3b;
-        border-left: 5px solid #10b981;
-        border-radius: 8px;
-        padding: 20px 22px;
-        margin-bottom: 14px;
-    }
-    .result-negative .r-label { color: #34d399; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 4px; }
-    .result-negative .r-value { color: #ffffff; font-size: 2.4rem; font-weight: 700; line-height: 1; margin-bottom: 2px; }
-    .result-negative .r-sub   { color: #6ee7b7; font-size: 0.78rem; margin-top: 4px; }
+/* File uploader */
+[data-testid="stFileUploaderDropzone"] {{
+    background: {BG2};
+    border: 2px dashed {BORDER};
+    border-radius: 10px;
+}}
 
-    /* ── Inline Notice ── */
-    .notice-red {
-        background: #1a0808;
-        border: 1px solid #7f1d1d;
-        border-radius: 6px;
-        padding: 10px 14px;
-        color: #fca5a5;
-        font-size: 0.81rem;
-        margin-top: 10px;
-        line-height: 1.5;
-    }
-    .notice-blue {
-        background: #050d1a;
-        border: 1px solid #1e3a5f;
-        border-radius: 6px;
-        padding: 10px 14px;
-        color: #93c5fd;
-        font-size: 0.81rem;
-        margin-top: 10px;
-        line-height: 1.5;
-    }
+/* Dataframe */
+[data-testid="stDataFrame"] {{
+    border: 1px solid {BORDER};
+    border-radius: 8px;
+    overflow: hidden;
+}}
 
-    /* ── Sidebar ── */
-    section[data-testid="stSidebar"] {
-        background-color: #0b0f19;
-        border-right: 1px solid #1e2a3a;
-    }
-    .sidebar-brand {
-        text-align: center;
-        padding: 10px 0 6px 0;
-    }
-    .sidebar-brand .s-icon { font-size: 2rem; }
-    .sidebar-brand .s-name { font-size: 1rem; font-weight: 700; color: #e2e8f0; margin-top: 4px; }
-    .sidebar-brand .s-ver  { font-size: 0.7rem; color: #4a7fa5; letter-spacing: 0.08em; text-transform: uppercase; }
+/* Progress bar */
+.stProgress > div > div > div {{
+    background: {ACCENT};
+    border-radius: 4px;
+}}
 
-    .sidebar-section {
-        font-size: 0.68rem;
-        font-weight: 700;
-        color: #4a7fa5;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        margin: 18px 0 8px 0;
-    }
-
-    .sidebar-disclaimer {
-        background: #111827;
-        border: 1px solid #1e3a5f;
-        border-radius: 6px;
-        padding: 10px 12px;
-        color: #64748b;
-        font-size: 0.72rem;
-        line-height: 1.55;
-        margin-top: 6px;
-    }
-    .sidebar-disclaimer strong { color: #3b82f6; }
-
-    .sidebar-dev {
-        text-align: center;
-        font-size: 0.7rem;
-        color: #334155;
-        margin-top: 18px;
-    }
-
-    /* ── History Table ── */
-    .stDataFrame { border: 1px solid #1e2a3a !important; border-radius: 6px; overflow: hidden; }
-
-    /* ── Buttons ── */
-    .stButton > button {
-        background: #1e40af;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        font-weight: 600;
-        font-size: 0.83rem;
-        letter-spacing: 0.04em;
-        padding: 10px;
-        transition: background 0.2s;
-    }
-    .stButton > button:hover { background: #1d4ed8; }
-
-    .stDownloadButton > button {
-        background: #0f172a;
-        color: #60a5fa;
-        border: 1px solid #1e3a5f;
-        border-radius: 6px;
-        font-weight: 600;
-        font-size: 0.8rem;
-    }
-
-    /* ── Divider ── */
-    hr { border-color: #1e2a3a !important; }
-
-    /* ── Tab styling ── */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 4px;
-        background: #0b0f19;
-        border-bottom: 1px solid #1e2a3a;
-        padding-bottom: 0;
-    }
-    .stTabs [data-baseweb="tab"] {
-        color: #4a7fa5;
-        font-size: 0.8rem;
-        font-weight: 600;
-        letter-spacing: 0.05em;
-        padding: 8px 16px;
-        border-radius: 4px 4px 0 0;
-    }
-    .stTabs [aria-selected="true"] {
-        background: #0d1117;
-        color: #e2e8f0 !important;
-        border-bottom: 2px solid #3b82f6;
-    }
-
-    /* ── Input fields ── */
-    .stTextInput > div > div > input,
-    .stNumberInput > div > div > input {
-        background: #111827;
-        border: 1px solid #1e2a3a;
-        border-radius: 6px;
-        color: #e2e8f0;
-        font-size: 0.85rem;
-    }
-    label[data-testid="stWidgetLabel"] p {
-        color: #64748b;
-        font-size: 0.75rem;
-        font-weight: 500;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-    }
+/* General text */
+p, div, span, h1, h2, h3 {{
+    color: {TEXT};
+}}
 </style>
 """, unsafe_allow_html=True)
 
-# ── 3. Model Loading ───────────────────────────────────────────
+# ── 5. Model Loading ───────────────────────────────────────────
 @st.cache_resource(show_spinner=False)
 def load_vision_model():
     try:
@@ -273,54 +178,67 @@ def load_vision_model():
     except Exception as e:
         return None, False
 
-# ── 4. Sidebar ─────────────────────────────────────────────────
+# ── 6. Sidebar ─────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("""
-    <div class="sidebar-brand">
-        <div class="s-icon">🧠</div>
-        <div class="s-name">NeuroScan AI</div>
-        <div class="s-ver">Version 3.0 · Brain MRI</div>
+    # Brand
+    st.markdown(f"""
+    <div style="text-align:center; padding:16px 0 10px 0;">
+        <div style="font-size:2.2rem;">🧠</div>
+        <div style="font-size:1.05rem; font-weight:700; color:{TEXT}; margin-top:4px;">NeuroScan AI</div>
+        <div style="font-size:0.68rem; color:{TEXT2}; letter-spacing:0.1em; text-transform:uppercase; margin-top:2px;">Brain MRI · Version 4.0</div>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("---")
-    st.markdown('<div class="sidebar-section">Patient Info</div>', unsafe_allow_html=True)
+    st.divider()
 
+    # Dark mode toggle
+    mode_label = "☀️ Light Mode" if st.session_state.dark_mode else "🌙 Dark Mode"
+    if st.button(mode_label, use_container_width=True):
+        st.session_state.dark_mode = not st.session_state.dark_mode
+        st.session_state.analysis_done = False
+        st.rerun()
+
+    st.divider()
+
+    # Patient info
+    st.markdown(f"<div style='font-size:0.7rem; font-weight:700; color:{TEXT2}; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:10px;'>Patient Information</div>", unsafe_allow_html=True)
     patient_name = st.text_input("Patient Name", "John Doe")
     patient_id   = st.text_input("Patient ID",   "MRN-84729")
     patient_age  = st.number_input("Age", min_value=1, max_value=120, value=45)
 
-    st.markdown("---")
-    st.markdown('<div class="sidebar-section">Notice</div>', unsafe_allow_html=True)
-    st.markdown("""
-    <div class="sidebar-disclaimer">
-        <strong>⚠️ For clinical use only with doctor review.</strong><br><br>
-        This AI tool can make mistakes. It does not replace a qualified doctor's diagnosis. Always confirm results with a radiologist.
+    st.divider()
+
+    # Disclaimer
+    st.markdown(f"""
+    <div style="background:{BG3}; border-left:3px solid {ACCENT}; border-radius:6px; padding:11px 13px; font-size:0.75rem; color:{TEXT2}; line-height:1.6;">
+        <strong style="color:{ACCENT};">⚠️ Medical Notice</strong><br><br>
+        This AI tool is for screening only. It <strong>can make mistakes</strong> and does not replace a doctor's diagnosis.<br><br>
+        <strong>Always confirm results with a qualified radiologist.</strong>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown('<div class="sidebar-dev">Developed by Mohammad Hasnain</div>', unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align:center; font-size:0.68rem; color:{TEXT2}; margin-top:20px;'>Developed by Mohammad Hasnain</div>", unsafe_allow_html=True)
 
-# ── 5. Header ─────────────────────────────────────────────────
-st.markdown("""
-<div class="ns-header">
-    <div class="ns-logo">🧠</div>
+# ── 7. Header ──────────────────────────────────────────────────
+st.markdown(f"""
+<div style="display:flex; align-items:center; gap:14px; padding:20px 0 10px 0; border-bottom:1px solid {BORDER}; margin-bottom:20px;">
+    <div style="font-size:2rem;">🧠</div>
     <div>
-        <p class="ns-title">NeuroScan AI</p>
-        <p class="ns-subtitle">Brain MRI · Tumor Detection · AI-Assisted Screening</p>
+        <div style="font-size:1.6rem; font-weight:700; color:{TEXT}; letter-spacing:-0.01em; line-height:1.2;">NeuroScan AI</div>
+        <div style="font-size:0.75rem; color:{TEXT2}; letter-spacing:0.08em; text-transform:uppercase; margin-top:3px;">AI-Assisted Brain Tumor Screening</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
 # ── Disclaimer Banner ──
-st.markdown("""
-<div class="ns-disclaimer">
-    <strong>⚠️ Medical Notice:</strong>&nbsp; This tool helps doctors screen MRI scans faster — it does not replace their judgment.
-    The AI can be wrong. <strong>All results must be confirmed by a licensed doctor before any action is taken.</strong>
+st.markdown(f"""
+<div style="background:{BG2}; border:1px solid {BORDER}; border-left:4px solid {ACCENT}; border-radius:7px; padding:11px 16px; margin-bottom:20px; font-size:0.81rem; color:{TEXT2}; line-height:1.6; box-shadow:0 1px 4px {SHADOW};">
+    <strong style="color:{ACCENT};">⚠️ For clinical use alongside a doctor.</strong>
+    &nbsp;This AI helps scan MRI images faster — it is not a diagnosis tool. Results must always be reviewed by a licensed doctor before any medical decision.
 </div>
 """, unsafe_allow_html=True)
 
-# ── 6. Tabs ────────────────────────────────────────────────────
+# ── 8. Tabs ────────────────────────────────────────────────────
 tab1, tab2 = st.tabs(["  🔬  Scan  ", "  🕰️  History  "])
 
 with tab1:
@@ -335,102 +253,113 @@ with tab1:
 
     # ── Left: Upload ──
     with col1:
-        st.markdown('<div class="ns-section-title">Upload MRI Scan</div>', unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size:0.72rem; font-weight:700; color:{TEXT2}; letter-spacing:0.1em; text-transform:uppercase; padding-bottom:8px; border-bottom:1px solid {BORDER}; margin-bottom:14px;'>Upload MRI Scan</div>", unsafe_allow_html=True)
         uploaded_file = st.file_uploader(
             "Drop an MRI image here (JPG or PNG)",
             type=["jpg", "jpeg", "png"],
-            help="Upload a brain MRI image. Supported formats: JPG, PNG."
+            help="Upload a brain MRI image in JPG or PNG format."
         )
         if uploaded_file:
+            # Reset analysis when a new file is uploaded
+            if st.session_state.get('last_file') != uploaded_file.name:
+                st.session_state.analysis_done = False
+                st.session_state.last_result   = None
+                st.session_state['last_file']  = uploaded_file.name
             st.image(uploaded_file, caption=f"Patient: {patient_name}", use_container_width=True)
 
     # ── Right: Report ──
     with col2:
-        st.markdown('<div class="ns-section-title">Diagnostic Report</div>', unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size:0.72rem; font-weight:700; color:{TEXT2}; letter-spacing:0.1em; text-transform:uppercase; padding-bottom:8px; border-bottom:1px solid {BORDER}; margin-bottom:14px;'>Diagnostic Report</div>", unsafe_allow_html=True)
 
         if not uploaded_file:
-            st.markdown("""
-            <div style="background:#0b0f19; border:1px dashed #1e2a3a; border-radius:8px; padding:32px 20px; text-align:center; color:#334155;">
+            st.markdown(f"""
+            <div style="background:{BG2}; border:2px dashed {BORDER}; border-radius:10px; padding:40px 20px; text-align:center; box-shadow:0 1px 4px {SHADOW};">
                 <div style="font-size:2rem; margin-bottom:10px;">📂</div>
-                <div style="font-size:0.85rem; font-weight:500; color:#4a7fa5;">Upload an MRI scan on the left to begin analysis</div>
+                <div style="font-size:0.85rem; font-weight:500; color:{TEXT2};">Upload an MRI scan on the left to get started</div>
             </div>
             """, unsafe_allow_html=True)
         else:
-            run = st.button("▶  Run AI Analysis", type="primary", use_container_width=True)
+            if st.button("▶  Run AI Analysis", type="primary", use_container_width=True):
+                progress_bar = st.progress(0)
+                for i in range(100):
+                    time.sleep(0.007)
+                    progress_bar.progress(i + 1)
+                progress_bar.empty()
 
-            if run:
-                with st.spinner("Analysing scan..."):
-                    progress_bar = st.progress(0)
-                    for i in range(100):
-                        time.sleep(0.008)
-                        progress_bar.progress(i + 1)
-                    progress_bar.empty()
-
-                    image       = Image.open(uploaded_file).convert('RGB')
-                    img_resized = image.resize((150, 150))
-                    img_array   = np.expand_dims(np.array(img_resized), axis=0)
-                    prob        = model.predict(img_array, verbose=0)[0][0]
-
+                image       = Image.open(uploaded_file).convert('RGB')
+                img_resized = image.resize((150, 150))
+                img_array   = np.expand_dims(np.array(img_resized), axis=0)
+                prob        = float(model.predict(img_array, verbose=0)[0][0])
                 is_tumor    = prob >= 0.65
                 conf_pct    = (prob * 100) if is_tumor else ((1 - prob) * 100)
                 timestamp   = datetime.datetime.now().strftime("%d %b %Y · %H:%M")
+                result_text = "Abnormality Detected" if is_tumor else "No Abnormality Found"
+
+                st.session_state.analysis_done = True
+                st.session_state.last_result   = {
+                    "is_tumor"   : is_tumor,
+                    "conf_pct"   : conf_pct,
+                    "timestamp"  : timestamp,
+                    "result_text": result_text,
+                }
+                st.session_state.scan_history.append({
+                    "Time"      : datetime.datetime.now().strftime("%H:%M:%S"),
+                    "Patient"   : patient_name,
+                    "ID"        : patient_id,
+                    "Age"       : patient_age,
+                    "Result"    : result_text,
+                    "Confidence": f"{conf_pct:.1f}%"
+                })
+
+            # Show result if available
+            if st.session_state.analysis_done and st.session_state.last_result:
+                r         = st.session_state.last_result
+                is_tumor  = r["is_tumor"]
+                conf_pct  = r["conf_pct"]
+                timestamp = r["timestamp"]
+                result_text = r["result_text"]
 
                 # Metadata row
                 st.markdown(f"""
-                <div style="display:flex; gap:20px; margin-bottom:14px;">
-                    <div style="background:#0b0f19; border:1px solid #1e2a3a; border-radius:6px; padding:10px 16px; flex:1;">
-                        <div style="font-size:0.65rem; color:#4a7fa5; text-transform:uppercase; letter-spacing:0.1em; font-weight:600;">Patient</div>
-                        <div style="color:#e2e8f0; font-size:0.88rem; font-weight:500; margin-top:3px;">{patient_name}</div>
+                <div style="display:flex; gap:10px; margin-bottom:14px; margin-top:6px;">
+                    <div style="background:{BG3}; border:1px solid {BORDER}; border-radius:7px; padding:10px 14px; flex:1;">
+                        <div style="font-size:0.62rem; color:{TEXT2}; text-transform:uppercase; letter-spacing:0.1em; font-weight:600;">Patient</div>
+                        <div style="color:{TEXT}; font-size:0.85rem; font-weight:600; margin-top:3px;">{patient_name}</div>
                     </div>
-                    <div style="background:#0b0f19; border:1px solid #1e2a3a; border-radius:6px; padding:10px 16px; flex:1;">
-                        <div style="font-size:0.65rem; color:#4a7fa5; text-transform:uppercase; letter-spacing:0.1em; font-weight:600;">ID / Age</div>
-                        <div style="color:#e2e8f0; font-size:0.88rem; font-weight:500; margin-top:3px;">{patient_id} · {patient_age} yrs</div>
+                    <div style="background:{BG3}; border:1px solid {BORDER}; border-radius:7px; padding:10px 14px; flex:1;">
+                        <div style="font-size:0.62rem; color:{TEXT2}; text-transform:uppercase; letter-spacing:0.1em; font-weight:600;">ID / Age</div>
+                        <div style="color:{TEXT}; font-size:0.85rem; font-weight:600; margin-top:3px;">{patient_id} · {patient_age} yrs</div>
                     </div>
-                    <div style="background:#0b0f19; border:1px solid #1e2a3a; border-radius:6px; padding:10px 16px; flex:1;">
-                        <div style="font-size:0.65rem; color:#4a7fa5; text-transform:uppercase; letter-spacing:0.1em; font-weight:600;">Scanned</div>
-                        <div style="color:#e2e8f0; font-size:0.88rem; font-weight:500; margin-top:3px;">{timestamp}</div>
+                    <div style="background:{BG3}; border:1px solid {BORDER}; border-radius:7px; padding:10px 14px; flex:1;">
+                        <div style="font-size:0.62rem; color:{TEXT2}; text-transform:uppercase; letter-spacing:0.1em; font-weight:600;">Scanned</div>
+                        <div style="color:{TEXT}; font-size:0.85rem; font-weight:600; margin-top:3px;">{timestamp}</div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
 
-                # Result card
                 if is_tumor:
                     st.markdown(f"""
-                    <div class="result-positive">
-                        <div class="r-label">⚠️ Abnormality Detected</div>
-                        <div class="r-value">{conf_pct:.1f}%</div>
-                        <div class="r-sub">AI Confidence · Risk Level: HIGH — Radiologist review required</div>
+                    <div style="background:#fff5f5; border:1px solid #fc8181; border-left:5px solid #e53e3e; border-radius:8px; padding:18px 20px; margin-bottom:10px;">
+                        <div style="font-size:0.7rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#e53e3e; margin-bottom:4px;">⚠️ Abnormality Detected</div>
+                        <div style="font-size:2.4rem; font-weight:700; color:#1a202c; line-height:1;">{conf_pct:.1f}%</div>
+                        <div style="font-size:0.78rem; color:#c53030; margin-top:5px;">AI Confidence · Risk Level: HIGH</div>
                     </div>
-                    <div class="notice-red">
+                    <div style="background:#fff5f5; border:1px solid #fc8181; border-radius:6px; padding:10px 14px; font-size:0.81rem; color:#c53030; line-height:1.55; margin-bottom:14px;">
                         The scan shows signs that may indicate a tumor. Please refer this patient to a neurologist or radiologist for confirmation.
                     </div>
                     """, unsafe_allow_html=True)
-                    result_text = "Abnormality Detected"
                 else:
                     st.markdown(f"""
-                    <div class="result-negative">
-                        <div class="r-label">✅ No Abnormality Found</div>
-                        <div class="r-value">{conf_pct:.1f}%</div>
-                        <div class="r-sub">AI Confidence · Risk Level: LOW — Routine follow-up advised</div>
+                    <div style="background:#f0fff4; border:1px solid #68d391; border-left:5px solid #38a169; border-radius:8px; padding:18px 20px; margin-bottom:10px;">
+                        <div style="font-size:0.7rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#38a169; margin-bottom:4px;">✅ No Abnormality Found</div>
+                        <div style="font-size:2.4rem; font-weight:700; color:#1a202c; line-height:1;">{conf_pct:.1f}%</div>
+                        <div style="font-size:0.78rem; color:#276749; margin-top:5px;">AI Confidence · Risk Level: LOW</div>
                     </div>
-                    <div class="notice-blue">
-                        The scan appears normal. A normal AI result does not rule out all conditions. Use clinical judgment alongside this result.
+                    <div style="background:#ebf8ff; border:1px solid #63b3ed; border-radius:6px; padding:10px 14px; font-size:0.81rem; color:#2b6cb0; line-height:1.55; margin-bottom:14px;">
+                        The scan appears normal. A normal AI result does not rule out all conditions — always use clinical judgment alongside this result.
                     </div>
                     """, unsafe_allow_html=True)
-                    result_text = "No Abnormality Found"
 
-                # Save to history
-                st.session_state.scan_history.append({
-                    "Time"     : datetime.datetime.now().strftime("%H:%M:%S"),
-                    "Patient"  : patient_name,
-                    "ID"       : patient_id,
-                    "Age"      : patient_age,
-                    "Result"   : result_text,
-                    "Confidence": f"{conf_pct:.1f}%"
-                })
-
-                # Report download
-                st.markdown("<br>", unsafe_allow_html=True)
                 report_txt = f"""NEUROSCAN AI — DIAGNOSTIC REPORT
 ================================
 Date      : {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
@@ -443,15 +372,15 @@ Confidence: {conf_pct:.1f}%
 
 MEDICAL DISCLAIMER
 ------------------
-This report is generated by an AI screening tool and is NOT
-a medical diagnosis. All findings must be reviewed and confirmed
-by a licensed radiologist or neurologist before any clinical
-decision is made. The AI model can make errors.
+This report is produced by an AI screening tool.
+It is NOT a medical diagnosis. All findings must be
+confirmed by a licensed radiologist or neurologist
+before any clinical decision is made.
 
-Developed by Mohammad Hasnain | NeuroScan AI v3.0
+Developed by Mohammad Hasnain | NeuroScan AI v4.0
 """
                 st.download_button(
-                    "📄  Download Report (TXT)",
+                    "📄  Download Report",
                     data=report_txt,
                     file_name=f"NeuroScan_{patient_id}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
                     use_container_width=True
@@ -459,17 +388,13 @@ Developed by Mohammad Hasnain | NeuroScan AI v3.0
 
 # ── History Tab ───────────────────────────────────────────────
 with tab2:
-    st.markdown('<div class="ns-section-title">Session Scan History</div>', unsafe_allow_html=True)
+    st.markdown(f"<div style='font-size:0.72rem; font-weight:700; color:{TEXT2}; letter-spacing:0.1em; text-transform:uppercase; padding-bottom:8px; border-bottom:1px solid {BORDER}; margin-bottom:14px;'>Session Scan History</div>", unsafe_allow_html=True)
     if st.session_state.scan_history:
-        st.dataframe(
-            st.session_state.scan_history,
-            use_container_width=True,
-            hide_index=True
-        )
+        st.dataframe(st.session_state.scan_history, use_container_width=True, hide_index=True)
     else:
-        st.markdown("""
-        <div style="background:#0b0f19; border:1px dashed #1e2a3a; border-radius:8px; padding:32px; text-align:center; color:#334155;">
+        st.markdown(f"""
+        <div style="background:{BG2}; border:2px dashed {BORDER}; border-radius:10px; padding:36px; text-align:center;">
             <div style="font-size:1.6rem; margin-bottom:8px;">🕰️</div>
-            <div style="font-size:0.85rem; color:#4a7fa5;">No scans in this session yet.</div>
+            <div style="font-size:0.85rem; color:{TEXT2};">No scans yet in this session.</div>
         </div>
         """, unsafe_allow_html=True)
